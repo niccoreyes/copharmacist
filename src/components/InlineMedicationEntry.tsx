@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import * as React from "react";
 import { parseMedicationString } from "@/lib/medicationParser";
 import { Plus } from "lucide-react";
 
@@ -19,8 +20,9 @@ interface InlineMedicationEntryProps {
   }) => void;
 }
 
-export const InlineMedicationEntry = ({ patientId, onSave }: InlineMedicationEntryProps) => {
-  const [input, setInput] = useState('');
+export const InlineMedicationEntry = React.forwardRef<HTMLInputElement, InlineMedicationEntryProps>(
+  ({ patientId, onSave }, ref) => {
+    const [input, setInput] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,17 +49,20 @@ export const InlineMedicationEntry = ({ patientId, onSave }: InlineMedicationEnt
     setInput('');
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="mb-4">
-      <div className="relative">
-        <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder='Add medication (e.g., "Sevelamer 500mg/tab BID" or "Caltrate Plus OD")'
-          className="pl-10 bg-card border-border"
-        />
-      </div>
-    </form>
-  );
-};
+    return (
+      <form onSubmit={handleSubmit} className="mb-4">
+        <div className="relative">
+          <Plus className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            ref={ref}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder='Add medication (e.g., "Sevelamer 500mg/tab BID" or "Caltrate Plus OD")'
+            className="pl-10 bg-card border-border"
+          />
+        </div>
+      </form>
+    );
+  }
+);
+InlineMedicationEntry.displayName = 'InlineMedicationEntry';

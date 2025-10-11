@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Patient, Medication, initDB, getAllPatients, addPatient, updatePatient, deletePatient, addMedication, getMedicationsByPatient, updateMedication, deleteMedication, exportData, importData } from "@/lib/db";
 import { PatientCard } from "@/components/PatientCard";
 import { MedicationForm } from "@/components/MedicationForm";
@@ -16,9 +16,19 @@ const Index = () => {
   const [editingMedication, setEditingMedication] = useState<Medication | undefined>();
   const [filter, setFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const addEntryRefs = useRef<Map<string, HTMLInputElement | null>>(new Map());
 
   useEffect(() => {
     initDB().then(loadAllData);
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   const loadAllData = async () => {
@@ -173,10 +183,22 @@ const Index = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search patients..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-card border-border"
+                  placeholder="Search patients..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-card border-border"
+                  ref={searchRef}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab') {
+                      // focus the add medication input of the first displayed patient
+                      e.preventDefault();
+                      const first = filteredPatients[0];
+                      if (first) {
+                        const node = addEntryRefs.current.get(first.id);
+                        node?.focus();
+                      }
+                    }
+                  }}
               />
             </div>
 
@@ -210,6 +232,9 @@ const Index = () => {
                   onEditMedication={handleEditMedication}
                   onDeleteMedication={handleDeleteMedication}
                   filter={filter}
+                  addEntryRef={(el: HTMLInputElement | null) => {
+                    addEntryRefs.current.set(patient.id, el);
+                  }}
                 />
               ))
             )}

@@ -23,6 +23,7 @@ interface PatientCardProps {
   onEditMedication: (medication: Medication) => void;
   onDeleteMedication: (id: string) => void;
   filter: string;
+  addEntryRef?: React.Ref<HTMLInputElement>;
 }
 
 export const PatientCard = ({
@@ -32,6 +33,7 @@ export const PatientCard = ({
   onEditMedication,
   onDeleteMedication,
   filter,
+  addEntryRef,
 }: PatientCardProps) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -70,6 +72,8 @@ export const PatientCard = ({
           <InlineMedicationEntry
             patientId={patient.id}
             onSave={onSaveMedication}
+            // forward the ref from parent so external components can focus this input
+            ref={addEntryRef}
           />
           <MedicationList
             medications={medications}
