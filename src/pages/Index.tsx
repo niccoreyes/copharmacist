@@ -30,6 +30,26 @@ const Index = () => {
       const meds = await getMedicationsByPatient(patient.id);
       medMap.set(patient.id, meds);
     }
+    // Sort patients so those with the most recent medication (by updatedAt or createdAt) appear first
+    const patientsWithLatest = allPatients.map(p => {
+      const meds = medMap.get(p.id) || [];
+      // determine latest date among meds
+      const latestMedDate = meds.reduce((latest, m) => {
+        const d1 = m.updatedAt || m.createdAt;
+        return !latest || d1 > latest ? d1 : latest;
+      }, '' as string);
+      return { patient: p, latestMedDate };
+    });
+
+    patientsWithLatest.sort((a, b) => {
+      if (a.latestMedDate === b.latestMedDate) return 0;
+      if (!a.latestMedDate) return 1; // push patients without meds to end
+      if (!b.latestMedDate) return -1;
+      return b.latestMedDate.localeCompare(a.latestMedDate);
+    });
+
+    const sortedPatients = patientsWithLatest.map(p => p.patient);
+    setPatients(sortedPatients);
     setAllMedications(medMap);
   };
 
@@ -118,8 +138,8 @@ const Index = () => {
   };
 
   const filteredPatients = patients.filter((patient) =>
-    patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.mrn.toLowerCase().includes(searchQuery.toLowerCase())
+    (patient.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    ((patient.mrn || '') as string).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (

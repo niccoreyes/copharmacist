@@ -3,7 +3,8 @@
 export interface Patient {
   id: string;
   name: string;
-  mrn: string; // Medical Record Number
+  // mrn was previously stored but is no longer used. Keep optional for compatibility with old imports.
+  mrn?: string;
   dateOfBirth: string;
   createdAt: string;
 }
@@ -43,8 +44,9 @@ export const initDB = (): Promise<IDBDatabase> => {
       const database = (event.target as IDBOpenDBRequest).result;
 
       if (!database.objectStoreNames.contains('patients')) {
-        const patientStore = database.createObjectStore('patients', { keyPath: 'id' });
-        patientStore.createIndex('mrn', 'mrn', { unique: true });
+      const patientStore = database.createObjectStore('patients', { keyPath: 'id' });
+      // Don't create an index on mrn since it's no longer used. Keep the field optional on the interface for
+      // compatibility when importing older exports that may include mrn.
       }
 
       if (!database.objectStoreNames.contains('medications')) {
@@ -157,7 +159,13 @@ export const exportData = async (): Promise<string> => {
     request.onerror = () => reject(request.error);
   });
 
-  return JSON.stringify({ patients, medications: allMedications }, null, 2);
+  // Strip mrn field from exported patients to avoid re-introducing unused field on import
+  const exportedPatients = patients.map(p => {
+    const { mrn, ...rest } = p as Patient;
+    return rest as Omit<Patient, 'mrn'>;
+  });
+
+  return JSON.stringify({ patients: exportedPatients, medications: allMedications }, null, 2);
 };
 
 export const importData = async (jsonData: string): Promise<void> => {
@@ -169,8 +177,10 @@ export const importData = async (jsonData: string): Promise<void> => {
   const medStore = transaction.objectStore('medications');
 
   for (const patient of data.patients) {
+  // Ensure imported patient objects do not include mrn to avoid storing unused field
+  const { mrn, ...patientWithoutMrn } = patient as Patient;
     await new Promise((resolve, reject) => {
-      const request = patientStore.put(patient);
+      const request = patientStore.put(patientWithoutMrn);
       request.onsuccess = () => resolve(null);
       request.onerror = () => reject(request.error);
     });
