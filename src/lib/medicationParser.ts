@@ -3,6 +3,7 @@ export interface ParsedMedication {
   dosage: string;
   frequency: string;
   route: string;
+  notes?: string; // leftover text or unmatched context
 }
 
 export function parseMedicationString(input: string): ParsedMedication {
@@ -105,6 +106,16 @@ export function parseMedicationString(input: string): ParsedMedication {
     if (m) { dosageMatch = m; dosage = m[1].trim(); break; }
   }
 
+  // Support shorthand like "4k" -> 4000 (assume IU if epo/epoetin context) or plain numeric*1000
+  const kMatch = trimmed.match(/\b(\d+(?:\.\d+)?)k\b/i);
+  if (!dosage && kMatch) {
+    const num = parseFloat(kMatch[1]);
+    // prefer IU unit when context mentions EPO or epoetin
+    const unit = /epo|epoetin|epr|epoe/i.test(trimmed) ? ' IU' : '';
+    dosage = `${num * 1000}${unit}`;
+    dosageMatch = kMatch as RegExpMatchArray;
+  }
+
   // Extract medication name (everything before the first clear dosage/frequency/route cue)
   let name = trimmed;
   // Identify first cue index
@@ -126,10 +137,49 @@ export function parseMedicationString(input: string): ParsedMedication {
   // Clean up name
   name = name.replace(/\s+/g, ' ').trim();
 
+  // Remaining unmatched text -> notes
+  // Remove extracted name, dosage, frequency, route phrases from the original to get leftover
+  let notes = trimmed;
+  // remove name if present at start
+  if (name && notes.toLowerCase().startsWith(name.toLowerCase())) {
+    notes = notes.slice(name.length).trim();
+  }
+  // remove dosage match
+  if (dosageMatch) {
+    notes = notes.replace(dosageMatch[0], '').trim();
+  }
+  // remove matched frequency token(s)
+  for (const f of freqPatterns) {
+    notes = notes.replace(f.re, '').trim();
+  }
+  // remove route mentions
+  for (const m of routeMap) {
+    notes = notes.replace(m.re, '').trim();
+  }
+
+  // Special handling: patterns like "alt 2x-3x" -> map to human readable frequency
+  const altMatch = trimmed.match(/\balt(?:ernating)?\s*(\d+x)\s*-\s*(\d+x)\b/i);
+  if (altMatch) {
+    const a = altMatch[1]; const b = altMatch[2];
+    frequency = `alternating ${a} / ${b} weekly`;
+    notes = notes.replace(altMatch[0], '').trim();
+  } else {
+    // also support "alt 2x-3x" without x on first or with spaces
+    const alt2 = trimmed.match(/\balt(?:ernating)?\s*(\d)\s*-\s*(\d)\s*(?:x)?\b/i);
+    if (alt2) {
+      frequency = `alternating ${alt2[1]}x / ${alt2[2]}x weekly`;
+      notes = notes.replace(alt2[0], '').trim();
+    }
+  }
+
+  // Final notes cleanup: collapse whitespace and remove leading punctuation
+  notes = notes.replace(/^[-:;,.\s]+/, '').replace(/\s+/g, ' ').trim();
+
   return {
     name: name || trimmed,
     dosage: dosage || '',
     frequency: frequency || '',
     route,
+    notes: notes || undefined,
   };
 }
