@@ -1,6 +1,4 @@
 # CoPharmacist
-```
-# CoPharmacist
 
 This repository contains the frontend for the CoPharmacist project built with Vite, React, TypeScript, Tailwind CSS, and shadcn-ui.
 
@@ -53,5 +51,3 @@ If Bun is unavailable, you can fall back to npm/yarn equivalents, but Bun is the
 - Owner: niccoreyes
 - Branch: main
 - Path: c:\GitHub\copharmacist
-```
-- Vite
