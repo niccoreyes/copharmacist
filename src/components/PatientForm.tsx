@@ -58,6 +58,7 @@ export const PatientForm = ({ patient, onSave, onCancel }: PatientFormProps) => 
               id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Enter patient name..."
               required
               autoFocus
               className="bg-background"
@@ -65,12 +66,12 @@ export const PatientForm = ({ patient, onSave, onCancel }: PatientFormProps) => 
           </div>
 
           <div>
-            <Label htmlFor="mrn">Medical Record Number *</Label>
+            <Label htmlFor="mrn">Medical Record Number</Label>
             <Input
               id="mrn"
               value={formData.mrn}
               onChange={(e) => setFormData({ ...formData, mrn: e.target.value })}
-              required
+              placeholder="Optional"
               className="bg-background"
             />
           </div>
@@ -82,6 +83,7 @@ export const PatientForm = ({ patient, onSave, onCancel }: PatientFormProps) => 
               type="date"
               value={formData.dateOfBirth}
               onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+              placeholder="Optional"
               className="bg-background"
             />
           </div>
