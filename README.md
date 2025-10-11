@@ -1,73 +1,57 @@
-# Welcome to your Lovable project
+# CoPharmacist
+```
+# CoPharmacist
 
-## Project info
+This repository contains the frontend for the CoPharmacist project built with Vite, React, TypeScript, Tailwind CSS, and shadcn-ui.
 
-**URL**: https://lovable.dev/projects/919fefac-fe86-4c60-b8ad-82817754e6e7
+## Project overview
+- Tech stack: Vite, React, TypeScript, Tailwind CSS, shadcn-ui
+- Core UI components live under `src/components` and UI primitives under `src/components/ui`.
+- Self-contained frontend ready for local development and deployment.
 
-## How can I edit this code?
+## Quick start
 
-There are several ways of editing your application.
+Prerequisites:
+- Bun is recommended for fast installs and dev server. Install from https://bun.sh/
+- You can also use npm/yarn if Bun is not available.
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/919fefac-fe86-4c60-b8ad-82817754e6e7) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+Setup and run (Windows PowerShell or any shell):
+```
+bun install
+bun run dev
 ```
 
-**Edit a file directly in GitHub**
+The dev server provides hot-reload and serves the app locally.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Local development guide
+- Open the repository in your editor (e.g., VS Code).
+- Install dependencies with `bun install`.
+- Start the dev server with `bun run dev`.
+- Access the app at the URL printed in the terminal (default http://localhost:5173).
 
-**Use GitHub Codespaces**
+If Bun is unavailable, you can fall back to npm/yarn equivalents, but Bun is the preferred workflow for this repo.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project structure (highlights)
+- `src/` – application source code
+- `src/components/` – reusable UI components (e.g., `InlineMedicationEntry.tsx`, `MedicationForm.tsx`, etc.)
+- `src/components/ui/` – UI primitives (buttons, dialogs, inputs, etc.)
+- `public/` – static assets
+- `vite.config.ts` – Vite configuration
+- `package.json` – project metadata and scripts
 
-## What technologies are used for this project?
-
-This project is built with:
-
+## Technologies used
 - Vite
-- TypeScript
 - React
-- shadcn-ui
+- TypeScript
 - Tailwind CSS
+- shadcn-ui
 
-## How can I deploy this project?
+## Deployment notes
+- This project is frontend-only. To deploy, build production assets and host with a static site provider (e.g., Vercel, Netlify).
 
-Simply open [Lovable](https://lovable.dev/projects/919fefac-fe86-4c60-b8ad-82817754e6e7) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+## Repository information
+- Owner: niccoreyes
+- Branch: main
+- Path: c:\GitHub\copharmacist
+```
+- Vite
