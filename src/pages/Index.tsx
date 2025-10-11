@@ -14,7 +14,6 @@ const Index = () => {
   const [allMedications, setAllMedications] = useState<Map<string, Medication[]>>(new Map());
   const [showMedicationForm, setShowMedicationForm] = useState(false);
   const [editingMedication, setEditingMedication] = useState<Medication | undefined>();
-  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -46,6 +45,19 @@ const Index = () => {
     toast({ title: "Patient added successfully" });
   };
 
+  const handleSaveQuickMedication = async (medData: Omit<Medication, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newMed: Medication = {
+      id: crypto.randomUUID(),
+      ...medData,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await addMedication(newMed);
+    await loadAllData();
+    toast({ title: "Medication added" });
+  };
+
   const handleSaveMedication = async (medData: Omit<Medication, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }) => {
     const now = new Date().toISOString();
     if (medData.id) {
@@ -62,7 +74,6 @@ const Index = () => {
     await loadAllData();
     setShowMedicationForm(false);
     setEditingMedication(undefined);
-    setSelectedPatientId(null);
     toast({ title: "Medication saved successfully" });
   };
 
@@ -76,13 +87,6 @@ const Index = () => {
 
   const handleEditMedication = (med: Medication) => {
     setEditingMedication(med);
-    setSelectedPatientId(med.patientId);
-    setShowMedicationForm(true);
-  };
-
-  const handleAddMedication = (patientId: string) => {
-    setSelectedPatientId(patientId);
-    setEditingMedication(undefined);
     setShowMedicationForm(true);
   };
 
@@ -182,7 +186,7 @@ const Index = () => {
                   key={patient.id}
                   patient={patient}
                   medications={allMedications.get(patient.id) || []}
-                  onAddMedication={handleAddMedication}
+                  onSaveMedication={handleSaveQuickMedication}
                   onEditMedication={handleEditMedication}
                   onDeleteMedication={handleDeleteMedication}
                   filter={filter}
@@ -193,15 +197,14 @@ const Index = () => {
         </div>
       </main>
 
-      {showMedicationForm && selectedPatientId && (
+      {showMedicationForm && editingMedication && (
         <MedicationForm
           medication={editingMedication}
-          patientId={selectedPatientId}
+          patientId={editingMedication.patientId}
           onSave={handleSaveMedication}
           onCancel={() => {
             setShowMedicationForm(false);
             setEditingMedication(undefined);
-            setSelectedPatientId(null);
           }}
         />
       )}

@@ -1,14 +1,25 @@
 import { Patient, Medication } from "@/lib/db";
 import { MedicationList } from "@/components/MedicationList";
-import { Button } from "@/components/ui/button";
+import { InlineMedicationEntry } from "@/components/InlineMedicationEntry";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 interface PatientCardProps {
   patient: Patient;
   medications: Medication[];
-  onAddMedication: (patientId: string) => void;
+  onSaveMedication: (medData: {
+    patientId: string;
+    name: string;
+    dosage: string;
+    frequency: string;
+    route: string;
+    status: 'active' | 'discontinued' | 'prn';
+    startDate: string;
+    endDate?: string;
+    notes?: string;
+    labNotes?: string;
+  }) => void;
   onEditMedication: (medication: Medication) => void;
   onDeleteMedication: (id: string) => void;
   filter: string;
@@ -17,7 +28,7 @@ interface PatientCardProps {
 export const PatientCard = ({
   patient,
   medications,
-  onAddMedication,
+  onSaveMedication,
   onEditMedication,
   onDeleteMedication,
   filter,
@@ -51,19 +62,15 @@ export const PatientCard = ({
               </div>
             </div>
           </button>
-          <Button
-            size="sm"
-            onClick={() => onAddMedication(patient.id)}
-            className="bg-primary hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Med
-          </Button>
         </div>
       </CardHeader>
 
       {isExpanded && (
-        <CardContent className="pt-0">
+        <CardContent className="pt-4">
+          <InlineMedicationEntry
+            patientId={patient.id}
+            onSave={onSaveMedication}
+          />
           <MedicationList
             medications={medications}
             onEdit={onEditMedication}
