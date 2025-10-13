@@ -1,4 +1,92 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+
+// Top-level helper to calculate days supply from quantity and frequency
+function calculateDaysSupply(quantity: number, frequency: string): number | null {
+  const freq = frequency.toUpperCase().trim();
+
+  // Common abbreviations
+  if (freq.includes('QID') || /4X/.test(freq)) return quantity / 4; // 4 times/day
+  if (freq.includes('TID') || /3X/.test(freq)) return quantity / 3; // 3 times/day
+  if (freq.includes('BID') || /2X/.test(freq) || /TWICE/.test(freq)) return quantity / 2; // 2 times/day
+  if (freq.includes('OD') || freq.includes('QD') || freq.includes('ONCE') || /1X(?!\/)/.test(freq) || /^ONCE$/.test(freq)) return quantity; // once daily
+
+  // QnH -> every n hours
+  const qhMatch = freq.match(/Q(\d+)H/);
+  if (qhMatch) {
+    const hours = parseInt(qhMatch[1], 10);
+    if (hours > 0) {
+      const dosesPerDay = 24 / hours;
+      return quantity / dosesPerDay;
+    }
+  }
+
+  // QnD -> every n days (dose every n days)
+  const qxdMatch = freq.match(/Q(\d+)D/);
+  if (qxdMatch) {
+    const days = parseInt(qxdMatch[1], 10);
+    if (days > 0) return quantity * days;
+  }
+
+  // Every N days/weeks/months (e.g., Every 2 weeks)
+  const everyMatch = freq.match(/EVERY\s+(\d+)\s*(DAY|DAYS|WEEK|WEEKS|MONTH|MONTHS)/);
+  if (everyMatch) {
+    const n = parseInt(everyMatch[1], 10);
+    const unit = everyMatch[2];
+    if (unit.startsWith('DAY')) return quantity * n;
+    if (unit.startsWith('WEEK')) return quantity * n * 7;
+    if (unit.startsWith('MONTH')) return quantity * n * 30;
+  }
+
+  // Weekly / Xx/week / twice weekly / 3x/week
+  if (freq.includes('WEEKLY') || /WEEK/.test(freq)) {
+    // alternating patterns like "2x / 3x weekly"
+    const altMatch = freq.match(/(\d+)\s*X?\s*\/\s*(\d+)\s*X?.*WEEK/);
+    if (altMatch) {
+      const a = parseInt(altMatch[1], 10);
+      const b = parseInt(altMatch[2], 10);
+      const avgPerWeek = (a + b) / 2;
+      if (avgPerWeek > 0) return (quantity / avgPerWeek) * 7;
+    }
+
+    const timesMatch = freq.match(/(\d+)\s*X(?:\/WEEK|\s*WEEK)/);
+    if (timesMatch) {
+      const timesPerWeek = parseInt(timesMatch[1], 10);
+      if (timesPerWeek > 0) return (quantity / timesPerWeek) * 7;
+    }
+
+    if (/TWICE\s+WEEKLY|TWICE\s+WEEK/.test(freq) || /TWO\s*X\s*WEEK/.test(freq) || /2X\/WEEK/.test(freq)) {
+      return (quantity / 2) * 7;
+    }
+
+    // "Weekly" with no explicit count => 1x/week
+    if (/WEEKLY|WEEK/.test(freq)) return quantity * 7;
+  }
+
+  // Monthly
+  if (/MONTHLY|MONTH/.test(freq)) {
+    // "0,1,6 months" or series - not a regular dosing schedule
+    if (/\d+,?\d*,?\d*/.test(freq) && freq.includes(',')) return null;
+    return quantity * 30;
+  }
+
+  // Once or single-dose events
+  if (/ONCE|SINGLE|ONE\s*TIME|ONETIME/.test(freq)) return quantity;
+
+  // Patterns like "Each HD x10 doses" or "Each HD x10" — treat as course/series (unknown daily rate)
+  if (/HD|HEMODIALYSIS|EACH HD/.test(freq) && /X\s*\d+/.test(freq)) return null;
+
+  // Series schedules (vaccines) like "0,1,6 months", "4-dose schedule" — not calculable here
+  if (/DOSE|SCHEDULE|BOOSTER|SERIES|MONTHS?/.test(freq) && /,|\bDOSE\b|SCHEDULE|BOOSTER|SERIES/.test(freq)) return null;
+
+  // Fallback: try to parse simple "Nx/day" or numeric prefixes
+  const perDayMatch = freq.match(/(\d+)\s*X\s*(?:DAILY|DAY|D)/);
+  if (perDayMatch) {
+    const perDay = parseInt(perDayMatch[1], 10);
+    if (perDay > 0) return quantity / perDay;
+  }
+
+  return null; // unknown/unsupported pattern
+}
 import { Medication } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,93 +103,7 @@ interface MedicationFormProps {
 }
 
 export const MedicationForm = ({ medication, patientId, onSave, onCancel }: MedicationFormProps) => {
-  // Helper to calculate days supply from quantity and frequency
-  const calculateDaysSupply = (quantity: number, frequency: string): number | null => {
-    const freq = frequency.toUpperCase().trim();
-
-    // Common abbreviations
-    if (freq.includes('QID') || /4X/.test(freq)) return quantity / 4; // 4 times/day
-    if (freq.includes('TID') || /3X/.test(freq)) return quantity / 3; // 3 times/day
-    if (freq.includes('BID') || /2X/.test(freq) || /TWICE/.test(freq)) return quantity / 2; // 2 times/day
-    if (freq.includes('OD') || freq.includes('QD') || freq.includes('ONCE') || /1X(?!\/)/.test(freq) || /^ONCE$/.test(freq)) return quantity; // once daily
-
-    // QnH -> every n hours
-    const qhMatch = freq.match(/Q(\d+)H/);
-    if (qhMatch) {
-      const hours = parseInt(qhMatch[1], 10);
-      if (hours > 0) {
-        const dosesPerDay = 24 / hours;
-        return quantity / dosesPerDay;
-      }
-    }
-
-    // QnD -> every n days (dose every n days)
-    const qxdMatch = freq.match(/Q(\d+)D/);
-    if (qxdMatch) {
-      const days = parseInt(qxdMatch[1], 10);
-      if (days > 0) return quantity * days;
-    }
-
-    // Every N days/weeks/months (e.g., Every 2 weeks)
-    const everyMatch = freq.match(/EVERY\s+(\d+)\s*(DAY|DAYS|WEEK|WEEKS|MONTH|MONTHS)/);
-    if (everyMatch) {
-      const n = parseInt(everyMatch[1], 10);
-      const unit = everyMatch[2];
-      if (unit.startsWith('DAY')) return quantity * n;
-      if (unit.startsWith('WEEK')) return quantity * n * 7;
-      if (unit.startsWith('MONTH')) return quantity * n * 30;
-    }
-
-    // Weekly / Xx/week / twice weekly / 3x/week
-    if (freq.includes('WEEKLY') || /WEEK/.test(freq)) {
-      // alternating patterns like "2x / 3x weekly"
-      const altMatch = freq.match(/(\d+)\s*X?\s*\/\s*(\d+)\s*X?.*WEEK/);
-      if (altMatch) {
-        const a = parseInt(altMatch[1], 10);
-        const b = parseInt(altMatch[2], 10);
-        const avgPerWeek = (a + b) / 2;
-        if (avgPerWeek > 0) return (quantity / avgPerWeek) * 7;
-      }
-
-      const timesMatch = freq.match(/(\d+)\s*X(?:\/WEEK|\s*WEEK)/);
-      if (timesMatch) {
-        const timesPerWeek = parseInt(timesMatch[1], 10);
-        if (timesPerWeek > 0) return (quantity / timesPerWeek) * 7;
-      }
-
-      if (/TWICE\s+WEEKLY|TWICE\s+WEEK/.test(freq) || /TWO\s*X\s*WEEK/.test(freq) || /2X\/WEEK/.test(freq)) {
-        return (quantity / 2) * 7;
-      }
-
-      // "Weekly" with no explicit count => 1x/week
-      if (/WEEKLY|WEEK/.test(freq)) return quantity * 7;
-    }
-
-    // Monthly
-    if (/MONTHLY|MONTH/.test(freq)) {
-      // "0,1,6 months" or series - not a regular dosing schedule
-      if (/\d+,?\d*,?\d*/.test(freq) && freq.includes(',')) return null;
-      return quantity * 30;
-    }
-
-    // Once or single-dose events
-    if (/ONCE|SINGLE|ONE\s*TIME|ONETIME/.test(freq)) return quantity;
-
-    // Patterns like "Each HD x10 doses" or "Each HD x10" — treat as course/series (unknown daily rate)
-    if (/HD|HEMODIALYSIS|EACH HD/.test(freq) && /X\s*\d+/.test(freq)) return null;
-
-    // Series schedules (vaccines) like "0,1,6 months", "4-dose schedule" — not calculable here
-    if (/DOSE|SCHEDULE|BOOSTER|SERIES|MONTHS?/.test(freq) && /,|\bDOSE\b|SCHEDULE|BOOSTER|SERIES/.test(freq)) return null;
-
-    // Fallback: try to parse simple "Nx/day" or numeric prefixes
-    const perDayMatch = freq.match(/(\d+)\s*X\s*(?:DAILY|DAY|D)/);
-    if (perDayMatch) {
-      const perDay = parseInt(perDayMatch[1], 10);
-      if (perDay > 0) return quantity / perDay;
-    }
-
-    return null; // unknown/unsupported pattern
-  };
+  
 
   // Calculate initial end date if medication has quantity and frequency
   const calculateEndDate = (startDate: string, quantity?: number, frequency?: string): string => {
@@ -130,22 +132,8 @@ export const MedicationForm = ({ medication, patientId, onSave, onCancel }: Medi
     quantity: medication?.quantity?.toString() || '',
   });
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onCancel();
-      } else if (e.key === 'Enter' && e.ctrlKey) {
-        handleSubmit(e as any);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [formData]);
-
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = useCallback((e?: React.FormEvent | KeyboardEvent) => {
+    if (e && 'preventDefault' in e && typeof e.preventDefault === 'function') e.preventDefault();
     
     // Calculate refill date if quantity and frequency are available
     let refillDate: string | undefined = medication?.refillDate;
@@ -169,7 +157,21 @@ export const MedicationForm = ({ medication, patientId, onSave, onCancel }: Medi
       quantity: formData.quantity ? parseInt(formData.quantity) : undefined,
       refillDate,
     });
-  };
+  }, [formData, medication, patientId, onSave]);
+
+  // Attach keyboard shortcuts after handleSubmit is declared
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCancel();
+      } else if (e.key === 'Enter' && e.ctrlKey) {
+        handleSubmit();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [formData, handleSubmit, onCancel]);
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
