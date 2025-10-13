@@ -115,6 +115,33 @@ const Index = () => {
     }
   };
 
+  const handleDeletePatient = async (id: string) => {
+    // Delete all medications for this patient
+    const meds = allMedications.get(id) || [];
+    for (const med of meds) {
+      await deleteMedication(med.id);
+    }
+    // Delete patient
+    await deletePatient(id);
+    await loadAllData();
+    toast({ title: "Patient deleted" });
+  };
+
+  const handleToggleMedicationStatus = async (medication: Medication) => {
+    const statusCycle: Record<Medication['status'], Medication['status']> = {
+      'active': 'discontinued',
+      'discontinued': 'prn',
+      'prn': 'active',
+    };
+    const newStatus = statusCycle[medication.status];
+    await updateMedication({ 
+      ...medication, 
+      status: newStatus,
+      updatedAt: new Date().toISOString() 
+    });
+    await loadAllData();
+  };
+
   const handleEditMedication = (med: Medication) => {
     setEditingMedication(med);
     setShowMedicationForm(true);
@@ -231,6 +258,8 @@ const Index = () => {
                   onSaveMedication={handleSaveQuickMedication}
                   onEditMedication={handleEditMedication}
                   onDeleteMedication={handleDeleteMedication}
+                  onDeletePatient={handleDeletePatient}
+                  onToggleMedicationStatus={handleToggleMedicationStatus}
                   filter={filter}
                   addEntryRef={(el: HTMLInputElement | null) => {
                     addEntryRefs.current.set(patient.id, el);

@@ -8,10 +8,11 @@ interface MedicationListProps {
   medications: Medication[];
   onEdit: (medication: Medication) => void;
   onDelete: (id: string) => void;
+  onToggleStatus: (medication: Medication) => void;
   filter: string;
 }
 
-export const MedicationList = ({ medications, onEdit, onDelete, filter }: MedicationListProps) => {
+export const MedicationList = ({ medications, onEdit, onDelete, onToggleStatus, filter }: MedicationListProps) => {
   const filtered = medications.filter((med) => {
     if (filter === 'all') return true;
     return med.status === filter;
@@ -46,9 +47,27 @@ export const MedicationList = ({ medications, onEdit, onDelete, filter }: Medica
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-3">
                   <h3 className="font-semibold text-foreground text-lg">{med.name}</h3>
-                  <Badge className={cn("text-xs", getStatusColor(med.status))}>
+                  <Badge 
+                    className={cn("text-xs cursor-pointer hover:opacity-80 transition-opacity", getStatusColor(med.status))}
+                    onClick={() => onToggleStatus(med)}
+                  >
                     {med.status.toUpperCase()}
                   </Badge>
+                  {med.quantity && (
+                    <span className="text-xs text-muted-foreground">
+                      Qty: {med.quantity}
+                    </span>
+                  )}
+                  {med.refillDate && new Date(med.refillDate) > new Date() && (
+                    <span className="text-xs text-accent font-medium">
+                      Refill: {new Date(med.refillDate).toLocaleDateString()}
+                    </span>
+                  )}
+                  {med.refillDate && new Date(med.refillDate) <= new Date() && (
+                    <span className="text-xs text-warning-foreground font-medium">
+                      Due for refill
+                    </span>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
                   <div>

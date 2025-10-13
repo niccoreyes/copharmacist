@@ -3,6 +3,7 @@ export interface ParsedMedication {
   dosage: string;
   frequency: string;
   route: string;
+  quantity?: number; // Number dispensed (from # symbol)
   notes?: string; // leftover text or unmatched context
 }
 
@@ -116,11 +117,19 @@ export function parseMedicationString(input: string): ParsedMedication {
     dosageMatch = kMatch as RegExpMatchArray;
   }
 
+  // Extract quantity dispensed (# symbol)
+  let quantity: number | undefined;
+  const quantityMatch = trimmed.match(/[#]\s*(\d+)/);
+  if (quantityMatch) {
+    quantity = parseInt(quantityMatch[1], 10);
+  }
+
   // Extract medication name (everything before the first clear dosage/frequency/route cue)
   let name = trimmed;
   // Identify first cue index
   const indices: number[] = [];
   if (dosageMatch) indices.push(trimmed.indexOf(dosageMatch[0]));
+  if (quantityMatch) indices.push(trimmed.indexOf(quantityMatch[0]));
   for (const f of freqPatterns) {
     const m = trimmed.match(f.re);
     if (m) { indices.push(trimmed.indexOf(m[0])); break; }
@@ -156,6 +165,10 @@ export function parseMedicationString(input: string): ParsedMedication {
   for (const m of routeMap) {
     notes = notes.replace(m.re, '').trim();
   }
+  // remove quantity match
+  if (quantityMatch) {
+    notes = notes.replace(quantityMatch[0], '').trim();
+  }
 
   // Special handling: patterns like "alt 2x-3x" -> map to human readable frequency
   const altMatch = trimmed.match(/\balt(?:ernating)?\s*(\d+x)\s*-\s*(\d+x)\b/i);
@@ -180,6 +193,7 @@ export function parseMedicationString(input: string): ParsedMedication {
     dosage: dosage || '',
     frequency: frequency || '',
     route,
+    quantity,
     notes: notes || undefined,
   };
 }

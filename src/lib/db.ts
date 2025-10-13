@@ -21,6 +21,8 @@ export interface Medication {
   endDate?: string;
   notes: string;
   labNotes: string;
+  quantity?: number; // Number dispensed (e.g., from #5)
+  refillDate?: string; // Calculated refill date
   createdAt: string;
   updatedAt: string;
 }

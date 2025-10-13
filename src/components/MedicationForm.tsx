@@ -25,6 +25,7 @@ export const MedicationForm = ({ medication, patientId, onSave, onCancel }: Medi
     endDate: medication?.endDate || '',
     notes: medication?.notes || '',
     labNotes: medication?.labNotes || '',
+    quantity: medication?.quantity?.toString() || '',
   });
 
   useEffect(() => {
@@ -42,12 +43,60 @@ export const MedicationForm = ({ medication, patientId, onSave, onCancel }: Medi
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Calculate refill date if quantity and frequency are available
+    let refillDate: string | undefined = medication?.refillDate;
+    if (formData.quantity && formData.frequency) {
+      const qty = parseInt(formData.quantity);
+      if (!isNaN(qty)) {
+        const daysSupply = calculateDaysSupply(qty, formData.frequency);
+        if (daysSupply) {
+          const refill = new Date(formData.startDate);
+          refill.setDate(refill.getDate() + daysSupply);
+          refillDate = refill.toISOString();
+        }
+      }
+    }
+    
     onSave({
       ...(medication?.id && { id: medication.id }),
       ...formData,
       patientId,
       status: formData.status as 'active' | 'discontinued' | 'prn',
+      quantity: formData.quantity ? parseInt(formData.quantity) : undefined,
+      refillDate,
     });
+  };
+
+  // Helper to calculate days supply from quantity and frequency
+  const calculateDaysSupply = (quantity: number, frequency: string): number | null => {
+    const freq = frequency.toUpperCase();
+    
+    if (freq.includes('QID') || freq.includes('4X')) return quantity / 4;
+    if (freq.includes('TID') || freq.includes('3X')) return quantity / 3;
+    if (freq.includes('BID') || freq.includes('2X') || freq.includes('TWICE')) return quantity / 2;
+    if (freq.includes('OD') || freq.includes('QD') || freq.includes('ONCE') || freq.includes('1X')) return quantity;
+    
+    const qhMatch = freq.match(/Q(\d+)H/);
+    if (qhMatch) {
+      const hours = parseInt(qhMatch[1]);
+      const dosesPerDay = 24 / hours;
+      return quantity / dosesPerDay;
+    }
+    
+    if (freq.includes('WEEKLY') || freq.includes('1X/WEEK')) return quantity * 7;
+    const weekMatch = freq.match(/(\d+)X\/WEEK/);
+    if (weekMatch) {
+      const timesPerWeek = parseInt(weekMatch[1]);
+      return (quantity / timesPerWeek) * 7;
+    }
+    
+    const qxdMatch = freq.match(/Q(\d+)D/);
+    if (qxdMatch) {
+      return quantity * parseInt(qxdMatch[1]);
+    }
+    
+    return null;
   };
 
   return (
@@ -144,6 +193,18 @@ export const MedicationForm = ({ medication, patientId, onSave, onCancel }: Medi
                 type="date"
                 value={formData.endDate}
                 onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                className="bg-background"
+              />
+            </div>
+
+            <div className="col-span-2">
+              <Label htmlFor="quantity">Quantity Dispensed</Label>
+              <Input
+                id="quantity"
+                type="number"
+                value={formData.quantity}
+                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                placeholder="e.g., 30"
                 className="bg-background"
               />
             </div>
