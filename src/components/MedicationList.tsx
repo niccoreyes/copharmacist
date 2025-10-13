@@ -49,7 +49,11 @@ export const MedicationList = ({ medications, onEdit, onDelete, onToggleStatus, 
                   <h3 className="font-semibold text-foreground text-lg">{med.name}</h3>
                   <Badge 
                     className={cn("text-xs cursor-pointer hover:opacity-80 transition-opacity", getStatusColor(med.status))}
-                    onClick={() => onToggleStatus(med)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleStatus(med);
+                    }}
+                    title="Click to toggle status"
                   >
                     {med.status.toUpperCase()}
                   </Badge>
@@ -58,14 +62,9 @@ export const MedicationList = ({ medications, onEdit, onDelete, onToggleStatus, 
                       Qty: {med.quantity}
                     </span>
                   )}
-                  {med.refillDate && new Date(med.refillDate) > new Date() && (
+                  {med.refillDate && new Date(med.refillDate) > new Date() && med.status !== 'discontinued' && (
                     <span className="text-xs text-accent font-medium">
-                      Refill: {new Date(med.refillDate).toLocaleDateString()}
-                    </span>
-                  )}
-                  {med.refillDate && new Date(med.refillDate) <= new Date() && (
-                    <span className="text-xs text-warning-foreground font-medium">
-                      Due for refill
+                      Finish: {new Date(med.refillDate).toLocaleDateString()}
                     </span>
                   )}
                 </div>

@@ -36,10 +36,27 @@ const Index = () => {
     setPatients(allPatients);
     
     const medMap = new Map<string, Medication[]>();
+    const now = new Date();
+    
     for (const patient of allPatients) {
       const meds = await getMedicationsByPatient(patient.id);
-      medMap.set(patient.id, meds);
+      
+      // Auto-discontinue medications that have passed their finish date
+      for (const med of meds) {
+        if (med.refillDate && new Date(med.refillDate) <= now && med.status !== 'discontinued') {
+          await updateMedication({
+            ...med,
+            status: 'discontinued',
+            updatedAt: new Date().toISOString()
+          });
+        }
+      }
+      
+      // Reload after potential updates
+      const updatedMeds = await getMedicationsByPatient(patient.id);
+      medMap.set(patient.id, updatedMeds);
     }
+    
     // Sort patients so those with the most recent medication (by updatedAt or createdAt) appear first
     const patientsWithLatest = allPatients.map(p => {
       const meds = medMap.get(p.id) || [];
