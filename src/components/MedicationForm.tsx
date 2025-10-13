@@ -15,14 +15,28 @@ interface MedicationFormProps {
 }
 
 export const MedicationForm = ({ medication, patientId, onSave, onCancel }: MedicationFormProps) => {
+  // Calculate initial end date if medication has quantity and frequency
+  const calculateEndDate = (startDate: string, quantity?: number, frequency?: string): string => {
+    if (!quantity || !frequency) return '';
+    const daysSupply = calculateDaysSupply(quantity, frequency);
+    if (!daysSupply) return '';
+    const end = new Date(startDate);
+    end.setDate(end.getDate() + daysSupply);
+    return end.toISOString().split('T')[0];
+  };
+
   const [formData, setFormData] = useState({
     name: medication?.name || '',
     dosage: medication?.dosage || '',
     frequency: medication?.frequency || '',
     route: medication?.route || '',
     status: medication?.status || 'active',
-    startDate: medication?.startDate || new Date().toISOString().split('T')[0],
-    endDate: medication?.endDate || '',
+    startDate: medication?.startDate ? new Date(medication.startDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    endDate: medication?.endDate ? new Date(medication.endDate).toISOString().split('T')[0] : calculateEndDate(
+      medication?.startDate || new Date().toISOString(),
+      medication?.quantity,
+      medication?.frequency
+    ),
     notes: medication?.notes || '',
     labNotes: medication?.labNotes || '',
     quantity: medication?.quantity?.toString() || '',
@@ -40,33 +54,6 @@ export const MedicationForm = ({ medication, patientId, onSave, onCancel }: Medi
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [formData]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Calculate refill date if quantity and frequency are available
-    let refillDate: string | undefined = medication?.refillDate;
-    if (formData.quantity && formData.frequency) {
-      const qty = parseInt(formData.quantity);
-      if (!isNaN(qty)) {
-        const daysSupply = calculateDaysSupply(qty, formData.frequency);
-        if (daysSupply) {
-          const refill = new Date(formData.startDate);
-          refill.setDate(refill.getDate() + daysSupply);
-          refillDate = refill.toISOString();
-        }
-      }
-    }
-    
-    onSave({
-      ...(medication?.id && { id: medication.id }),
-      ...formData,
-      patientId,
-      status: formData.status as 'active' | 'discontinued' | 'prn',
-      quantity: formData.quantity ? parseInt(formData.quantity) : undefined,
-      refillDate,
-    });
-  };
 
   // Helper to calculate days supply from quantity and frequency
   const calculateDaysSupply = (quantity: number, frequency: string): number | null => {
@@ -99,6 +86,33 @@ export const MedicationForm = ({ medication, patientId, onSave, onCancel }: Medi
     return null;
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Calculate refill date if quantity and frequency are available
+    let refillDate: string | undefined = medication?.refillDate;
+    if (formData.quantity && formData.frequency) {
+      const qty = parseInt(formData.quantity);
+      if (!isNaN(qty)) {
+        const daysSupply = calculateDaysSupply(qty, formData.frequency);
+        if (daysSupply) {
+          const refill = new Date(formData.startDate);
+          refill.setDate(refill.getDate() + daysSupply);
+          refillDate = refill.toISOString();
+        }
+      }
+    }
+    
+    onSave({
+      ...(medication?.id && { id: medication.id }),
+      ...formData,
+      patientId,
+      status: formData.status as 'active' | 'discontinued' | 'prn',
+      quantity: formData.quantity ? parseInt(formData.quantity) : undefined,
+      refillDate,
+    });
+  };
+
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-card border border-border rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -126,37 +140,34 @@ export const MedicationForm = ({ medication, patientId, onSave, onCancel }: Medi
             </div>
 
             <div>
-              <Label htmlFor="dosage">Dosage *</Label>
+              <Label htmlFor="dosage">Dosage</Label>
               <Input
                 id="dosage"
                 value={formData.dosage}
                 onChange={(e) => setFormData({ ...formData, dosage: e.target.value })}
                 placeholder="e.g., 500mg"
-                required
                 className="bg-background"
               />
             </div>
 
             <div>
-              <Label htmlFor="frequency">Frequency *</Label>
+              <Label htmlFor="frequency">Frequency</Label>
               <Input
                 id="frequency"
                 value={formData.frequency}
                 onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
                 placeholder="e.g., BID, TID"
-                required
                 className="bg-background"
               />
             </div>
 
             <div>
-              <Label htmlFor="route">Route *</Label>
+              <Label htmlFor="route">Route</Label>
               <Input
                 id="route"
                 value={formData.route}
                 onChange={(e) => setFormData({ ...formData, route: e.target.value })}
                 placeholder="e.g., PO, IV"
-                required
                 className="bg-background"
               />
             </div>
